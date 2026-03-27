@@ -25,11 +25,13 @@ app.MapGet("/books", async (
     BookstoreContext db,
     int? pageSize,
     int? pageNum,
-    string? sortBy) =>
+    string? sortBy,
+    string? category) =>
 {
     var resolvedPageSize = pageSize.GetValueOrDefault(5);
     var resolvedPageNum = pageNum.GetValueOrDefault(1);
     var resolvedSortBy = sortBy?.Trim().ToLowerInvariant() ?? "title";
+    var resolvedCategory = category?.Trim();
 
     if (resolvedPageSize <= 0 || resolvedPageNum <= 0)
     {
@@ -38,6 +40,12 @@ app.MapGet("/books", async (
 
     IQueryable<backend.Models.Book> query = db.Books.AsNoTracking();
 
+    if (!string.IsNullOrWhiteSpace(resolvedCategory) &&
+        !string.Equals(resolvedCategory, "all", StringComparison.OrdinalIgnoreCase))
+    {
+        query = query.Where(b => b.Category == resolvedCategory);
+    }
+
     query = resolvedSortBy switch
     {
         "title_desc" => query.OrderByDescending(b => b.Title),
@@ -45,7 +53,7 @@ app.MapGet("/books", async (
         _ => query.OrderBy(b => b.Title)
     };
 
-    var totalNumBooks = await db.Books.CountAsync();
+    var totalNumBooks = await query.CountAsync();
 
     var books = await query
         .Skip((resolvedPageNum - 1) * resolvedPageSize)
@@ -57,6 +65,18 @@ app.MapGet("/books", async (
         books,
         totalNumBooks
     });
+});
+
+app.MapGet("/categories", async (BookstoreContext db) =>
+{
+    var categories = await db.Books
+        .AsNoTracking()
+        .Select(b => b.Category)
+        .Distinct()
+        .OrderBy(category => category)
+        .ToListAsync();
+
+    return Results.Ok(categories);
 });
 
 app.Run();

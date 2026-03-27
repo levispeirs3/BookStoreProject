@@ -10,6 +10,10 @@ export default defineConfig({
         target: 'http://localhost:5099',
         changeOrigin: true,
       },
+      '/categories': {
+        target: 'http://localhost:5099',
+        changeOrigin: true,
+      },
     },
   },
 })

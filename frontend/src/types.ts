@@ -14,3 +14,8 @@ export type BooksResponse = {
   books: Book[]
   totalNumBooks: number
 }
+
+export type CartItem = {
+  book: Book
+  quantity: number
+}

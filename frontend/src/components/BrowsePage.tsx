@@ -1,50 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
-import type { Book, BooksResponse, CartItem } from '../types'
+import { useEffect, useState } from 'react'
+import type { Book, BooksResponse, BrowseState, CartItem } from '../types'
+import {
+  browseStateStorageKey,
+  cartStorageKey,
+  defaultBrowseState,
+  readSessionStorage,
+  writeSessionStorage,
+} from '../utils/storage'
+import { formatCurrency } from '../utils/format'
 
 const pageSizeOptions = [5, 10, 15]
 const visiblePageButtonCount = 5
-const cartStorageKey = 'bookstore-cart'
-const browseStateStorageKey = 'bookstore-browse-state'
 
-type BrowseState = {
-  category: string
-  pageNum: number
-  pageSize: number
-  sortBy: string
+type BrowsePageProps = {
+  onNavigate: (path: string) => void
 }
 
-function readSessionStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback
-  }
-
-  const savedValue = window.sessionStorage.getItem(key)
-
-  if (!savedValue) {
-    return fallback
-  }
-
-  try {
-    return JSON.parse(savedValue) as T
-  } catch {
-    return fallback
-  }
-}
-
-function formatCurrency(value: number) {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  })
-}
-
-export function BookList() {
-  const initialBrowseState = readSessionStorage<BrowseState>(browseStateStorageKey, {
-    category: 'All',
-    pageNum: 1,
-    pageSize: 5,
-    sortBy: 'title',
-  })
+export function BrowsePage({ onNavigate }: BrowsePageProps) {
+  const initialBrowseState = readSessionStorage<BrowseState>(
+    browseStateStorageKey,
+    defaultBrowseState,
+  )
 
   const [books, setBooks] = useState<Book[]>([])
   const [categories, setCategories] = useState<string[]>([])
@@ -59,7 +35,6 @@ export function BookList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [categoryError, setCategoryError] = useState('')
-  const inventoryRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -138,19 +113,16 @@ export function BookList() {
   }, [pageNum, pageSize, selectedCategory, sortBy])
 
   useEffect(() => {
-    window.sessionStorage.setItem(
-      browseStateStorageKey,
-      JSON.stringify({
-        category: selectedCategory,
-        pageNum,
-        pageSize,
-        sortBy,
-      }),
-    )
+    writeSessionStorage(browseStateStorageKey, {
+      category: selectedCategory,
+      pageNum,
+      pageSize,
+      sortBy,
+    })
   }, [pageNum, pageSize, selectedCategory, sortBy])
 
   useEffect(() => {
-    window.sessionStorage.setItem(cartStorageKey, JSON.stringify(cart))
+    writeSessionStorage(cartStorageKey, cart)
   }, [cart])
 
   const totalPages = Math.max(1, Math.ceil(totalNumBooks / pageSize))
@@ -165,17 +137,12 @@ export function BookList() {
   const cartSubtotal = cart.reduce((sum, item) => sum + item.book.price * item.quantity, 0)
 
   function addToCart(book: Book) {
-    const currentBrowseState = {
+    writeSessionStorage(browseStateStorageKey, {
       category: selectedCategory,
       pageNum,
       pageSize,
       sortBy,
-    }
-
-    window.sessionStorage.setItem(
-      browseStateStorageKey,
-      JSON.stringify(currentBrowseState),
-    )
+    })
 
     setCart((currentCart) => {
       const existingBook = currentCart.find((item) => item.book.bookId === book.bookId)
@@ -192,43 +159,10 @@ export function BookList() {
     })
   }
 
-  function updateQuantity(bookId: number, quantity: number) {
-    if (quantity <= 0) {
-      setCart((currentCart) => currentCart.filter((item) => item.book.bookId !== bookId))
-      return
-    }
-
-    setCart((currentCart) =>
-      currentCart.map((item) =>
-        item.book.bookId === bookId ? { ...item, quantity } : item,
-      ),
-    )
-  }
-
-  function continueShopping() {
-    const savedState = readSessionStorage<BrowseState>(browseStateStorageKey, {
-      category: 'All',
-      pageNum: 1,
-      pageSize: 5,
-      sortBy: 'title',
-    })
-
-    setSelectedCategory(savedState.category)
-    setPageNum(savedState.pageNum)
-    setPageSize(savedState.pageSize)
-    setSortBy(savedState.sortBy)
-
-    inventoryRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }
-
   return (
     <section className="container pb-5">
       <div className="row g-4 align-items-start">
         <div className="col-lg-4 col-xl-3">
-          {/* Bootstrap feature: sticky-top keeps the sidebar visible while scrolling */}
           <aside className="sticky-top pt-lg-3">
             <div className="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
               <div className="card-header bg-dark text-white p-4 border-0">
@@ -309,77 +243,32 @@ export function BookList() {
                   <h3 className="h5 mb-1">Cart Summary</h3>
                   <p className="mb-0 text-secondary">Saved for this session</p>
                 </div>
-                {/* Bootstrap feature: badge highlights the cart item count */}
                 <span className="badge text-bg-dark rounded-pill px-3 py-2">
                   {totalCartItems} items
                 </span>
               </div>
               <div className="card-body p-4">
-                {cart.length === 0 ? (
-                  <p className="text-secondary mb-0">
-                    Your cart is empty. Add a book from the list to get started.
-                  </p>
-                ) : (
-                  <>
-                    <div className="table-responsive">
-                      <table className="table align-middle mb-3">
-                        <thead>
-                          <tr>
-                            <th>Book</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cart.map((item) => (
-                            <tr key={item.book.bookId}>
-                              <td className="fw-semibold">{item.book.title}</td>
-                              <td style={{ minWidth: '6rem' }}>
-                                <input
-                                  className="form-control form-control-sm"
-                                  type="number"
-                                  min="0"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    updateQuantity(
-                                      item.book.bookId,
-                                      Number(e.target.value),
-                                    )
-                                  }
-                                />
-                              </td>
-                              <td>{formatCurrency(item.book.price)}</td>
-                              <td>{formatCurrency(item.book.price * item.quantity)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="d-flex justify-content-between align-items-center border-top pt-3">
-                      <span className="fw-semibold">Total</span>
-                      <span className="fw-bold">{formatCurrency(cartSubtotal)}</span>
-                    </div>
-
-                    <button
-                      className="btn btn-outline-dark w-100 mt-3"
-                      onClick={continueShopping}
-                    >
-                      Continue Shopping
-                    </button>
-                  </>
-                )}
+                <p className="text-secondary">
+                  View the full cart on its own page and keep your current filters when you
+                  return.
+                </p>
+                <div className="d-flex justify-content-between align-items-center border-top pt-3">
+                  <span className="fw-semibold">Subtotal</span>
+                  <span className="fw-bold">{formatCurrency(cartSubtotal)}</span>
+                </div>
+                <button
+                  className="btn btn-dark w-100 mt-3"
+                  onClick={() => onNavigate('/cart')}
+                >
+                  Open Cart
+                </button>
               </div>
             </div>
           </aside>
         </div>
 
         <div className="col-lg-8 col-xl-9">
-          <div
-            ref={inventoryRef}
-            className="rounded-4 border-0 shadow-lg overflow-hidden"
-          >
+          <div className="rounded-4 border-0 shadow-lg overflow-hidden">
             <div className="bg-dark text-light p-4 p-md-5">
               <div className="d-flex flex-column flex-md-row justify-content-between gap-3">
                 <div>
@@ -393,7 +282,6 @@ export function BookList() {
                   <p className="mb-2 small text-uppercase text-light-emphasis">
                     Cart snapshot
                   </p>
-                  {/* Bootstrap feature: badge highlights the current cart summary */}
                   <span className="badge text-bg-warning rounded-pill px-3 py-2 fs-6">
                     {totalCartItems} items | {formatCurrency(cartSubtotal)}
                   </span>

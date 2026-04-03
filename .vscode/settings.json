@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/c194ad75-a9b0-4ac2-af99-2cf0ce8c09c7/resourceGroups/appsvc_windows_francecentral/providers/Microsoft.Web/sites/BookStoreProject-Speirs-Backend",
+    "appService.deploySubpath": "backend\\publish"
+}

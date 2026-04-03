@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Book, BookFormData } from '../types'
-import { formatCurrency } from '../utils/format'
+import { apiUrl } from '../api/api'
+import { formatCurrency } from '../api/format'
 
 type AdminBooksPageProps = {
   onNavigate: (path: string) => void
@@ -36,7 +37,7 @@ export function AdminBooksPage({ onNavigate }: AdminBooksPageProps) {
     setError('')
 
     try {
-      const response = await fetch('/books/all')
+      const response = await fetch(apiUrl('/books/all'))
 
       if (!response.ok) {
         throw new Error('The admin book list could not be loaded.')
@@ -91,7 +92,7 @@ export function AdminBooksPage({ onNavigate }: AdminBooksPageProps) {
       price: Number(formData.price),
     }
 
-    const url = editingBookId === null ? '/books' : `/books/${editingBookId}`
+    const url = editingBookId === null ? apiUrl('/books') : apiUrl(`/books/${editingBookId}`)
     const method = editingBookId === null ? 'POST' : 'PUT'
 
     try {
@@ -125,7 +126,7 @@ export function AdminBooksPage({ onNavigate }: AdminBooksPageProps) {
     setSuccessMessage('')
 
     try {
-      const response = await fetch(`/books/${bookId}`, {
+      const response = await fetch(apiUrl(`/books/${bookId}`), {
         method: 'DELETE',
       })
 

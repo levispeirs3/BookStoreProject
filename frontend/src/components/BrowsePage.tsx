@@ -6,8 +6,9 @@ import {
   defaultBrowseState,
   readSessionStorage,
   writeSessionStorage,
-} from '../utils/storage'
-import { formatCurrency } from '../utils/format'
+} from '../api/storage'
+import { apiUrl } from '../api/api'
+import { formatCurrency } from '../api/format'
 
 const pageSizeOptions = [5, 10, 15]
 const visiblePageButtonCount = 5
@@ -43,7 +44,7 @@ export function BrowsePage({ onNavigate }: BrowsePageProps) {
       setCategoryError('')
 
       try {
-        const response = await fetch('/categories', {
+        const response = await fetch(apiUrl('/categories'), {
           signal: controller.signal,
         })
 
@@ -85,7 +86,7 @@ export function BrowsePage({ onNavigate }: BrowsePageProps) {
           params.set('category', selectedCategory)
         }
 
-        const response = await fetch(`/books?${params.toString()}`, {
+        const response = await fetch(apiUrl(`/books?${params.toString()}`), {
           signal: controller.signal,
         })
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CartItem } from '../types'
-import { cartStorageKey, readSessionStorage, writeSessionStorage } from '../utils/storage'
-import { formatCurrency } from '../utils/format'
+import { cartStorageKey, readSessionStorage, writeSessionStorage } from '../api/storage'
+import { formatCurrency } from '../api/format'
 
 type CartPageProps = {
   onNavigate: (path: string) => void
